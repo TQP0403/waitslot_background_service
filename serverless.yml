@@ -1,0 +1,72 @@
+service: blockx-background-service
+frameworkVersion: "3"
+useDotenv: true
+
+plugins:
+  # - "serverless-plugin-typescript"
+  - serverless-plugin-optimize
+  - serverless-offline
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  region: ap-southeast-1
+  stage: ${opt:stage, "dev"}
+
+  # architecture: x86_64
+  architecture: arm64
+  memorySize: 256
+  timeout: 60
+
+  versionFunctions: true
+  runtimeManagement: auto
+  deploymentMethod: direct
+
+  tracing:
+    lambda: true
+
+  vpc:
+    securityGroupIds:
+      - ${env:VPC_SECURITY_GROUP}
+    subnetIds:
+      - ${env:VPC_SUBNET_1}
+      - ${env:VPC_SUBNET_2}
+
+  environment:
+    TYPEORM_HOST: ${env:TYPEORM_HOST}
+    TYPEORM_PORT: ${env:TYPEORM_PORT}
+    TYPEORM_USERNAME: ${env:TYPEORM_USERNAME}
+    TYPEORM_PASSWORD: ${env:TYPEORM_PASSWORD}
+    TYPEORM_DATABASE: ${env:TYPEORM_DATABASE}
+    TYPEORM_SCHEMA: ${env:TYPEORM_SCHEMA}
+    TYPEORM_LOGGING: ${env:TYPEORM_LOGGING}
+    TYPEORM_SSL: ${env:TYPEORM_SSL}
+    TYPEORM_TIMEOUT: ${env:TYPEORM_TIMEOUT}
+    TYPEORM_POOLSIZE: ${env:TYPEORM_POOLSIZE}
+
+functions:
+  # main:
+  #   handler: dist/lambda.handler
+  #   events:
+  #     - http:
+  #         method: ANY
+  #         path: /
+  #     - http:
+  #         method: ANY
+  #         path: "{proxy+}"
+
+  cronDayData:
+    handler: dist/modules/day-data/lambda.handler
+    events:
+      - schedule:
+          name: syncDayDataEvent-${self:provider.stage}
+          enabled: ${env:CRON_ENABLE, true}
+          rate: cron(${env:CRON_DAY_DATA, "*/1 * * * ? *"})
+
+  cronUserDayData:
+    handler: dist/modules/user-day-data/lambda.handler
+    events:
+      - schedule:
+          name: syncUserDayDataEvent-${self:provider.stage}
+          enabled: ${env:CRON_ENABLE, true}
+          rate: cron(${env:CRON_USER_DAY_DATA, "*/1 * * * ? *"})
